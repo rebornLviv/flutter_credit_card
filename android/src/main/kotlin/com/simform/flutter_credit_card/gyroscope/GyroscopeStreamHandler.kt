@@ -15,33 +15,36 @@ internal class GyroscopeStreamHandler(
 ) : EventChannel.StreamHandler {
     private var sensorEventListener: SensorEventListener? = null
 
-    private val sensor: Sensor by lazy {
-        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-    }
+    // Direct initialization instead of lazy delegate
+    private val sensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
     override fun onListen(arguments: Any?, events: EventSink) {
         sensorEventListener = createSensorEventListener(events)
         // Gyroscope Event sample period set at 60 fps, specified in microseconds.
-        sensorManager.registerListener(sensorEventListener, sensor, 16666)
+        sensor?.let {
+            sensorManager.registerListener(sensorEventListener, it, 16666)
+        }
     }
 
-    override fun onCancel(arguments: Any?) = sensorManager.unregisterListener(sensorEventListener)
+    override fun onCancel(arguments: Any?) {
+        sensorManager.unregisterListener(sensorEventListener)
+    }
 
     private fun createSensorEventListener(events: EventSink): SensorEventListener {
         return object : SensorEventListener {
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
 
-            override fun onSensorChanged(event: SensorEvent) =
+            override fun onSensorChanged(event: SensorEvent) {
                 events.success(processForOrientation(event.values))
+            }
         }
     }
 
     private fun processForOrientation(values: FloatArray): DoubleArray {
-        if (display == null) {
-            return values.map { it.toDouble() }.toDoubleArray()
+        return if (display == null) {
+            values.map { it.toDouble() }.toDoubleArray()
         } else {
             val arr = DoubleArray(3)
-
             val x = values[0].toDouble()
             val y = values[1].toDouble()
             val z = values[2].toDouble()
@@ -67,7 +70,7 @@ internal class GyroscopeStreamHandler(
                 }
             }
 
-            return arr
+            arr
         }
     }
 }
